@@ -26,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build-nl | Out-Null
-          Expand-Archive -Path reference/GamesCleaner_NL_source.zip -DestinationPath build-nl -Force
+          tar -xf reference/GamesCleaner_NL_source.zip -C build-nl
 
       - name: Publish self-contained Windows x64
         shell: pwsh
