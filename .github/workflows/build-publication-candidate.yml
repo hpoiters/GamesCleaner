@@ -45,7 +45,11 @@ jobs:
         shell: pwsh
         run: |
           & .\publish-nl\GamesCleaner.exe --selftest
-          if ($LASTEXITCODE -ne 0) { throw "GamesCleaner self-test failed" }
+          if ($LASTEXITCODE -ne 0) {
+            $failure = Join-Path $env:TEMP "GamesCleanerSelfTest_FAILED.txt"
+            if (Test-Path $failure) { Get-Content $failure }
+            throw "GamesCleaner self-test failed"
+          }
 
       - name: Prepare Dutch publication-test package
         shell: pwsh
