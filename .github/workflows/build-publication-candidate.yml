@@ -1,0 +1,55 @@
+name: Build publication candidate
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "reference/GamesCleaner_NL_source.zip"
+      - ".github/workflows/build-publication-candidate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-nl:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Extract exact NL source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build-nl | Out-Null
+          Expand-Archive -Path reference/GamesCleaner_NL_source.zip -DestinationPath build-nl -Force
+
+      - name: Publish self-contained Windows x64
+        shell: pwsh
+        run: |
+          dotnet publish build-nl/src/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-nl
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+      - name: Run built-in regression self-test
+        shell: pwsh
+        run: |
+          & .\publish-nl\GamesCleaner.exe --selftest
+          if ($LASTEXITCODE -ne 0) { throw "GamesCleaner self-test failed" }
+
+      - name: Prepare Dutch publication-test package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package-nl | Out-Null
+          Copy-Item publish-nl\GamesCleaner.exe "package-nl\!GamesCleaner.exe"
+          Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_PUBLICATIEPROEF.zip -Force
+
+      - name: Upload Dutch test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GamesCleaner_NL_PUBLICATIEPROEF
+          path: GamesCleaner_NL_PUBLICATIEPROEF.zip
+          if-no-files-found: error
