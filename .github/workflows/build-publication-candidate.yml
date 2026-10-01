@@ -34,17 +34,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path build-nl | Out-Null
           Expand-Archive -Path GamesCleaner_NL_source_exact.zip -DestinationPath build-nl -Force
 
-      - name: Reconstruct and verify English source
+      - name: Create English source from verified Dutch source
         shell: pwsh
         run: |
-          $parts = @("reference/source-parts/en-00.b64","reference/source-parts/en-01a.b64","reference/source-parts/en-01b.b64","reference/source-parts/en-02a.b64","reference/source-parts/en-02b.b64","reference/source-parts/en-03a.b64","reference/source-parts/en-03b.b64") | ForEach-Object { Get-Item $_ }
+          $parts = Get-ChildItem reference/source-parts/enpatch-*.b64 | Sort-Object Name
           $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
-          [IO.File]::WriteAllBytes("GamesCleaner_EN_source_exact.zip", [Convert]::FromBase64String($b64))
-          $sha = (Get-FileHash "GamesCleaner_EN_source_exact.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($sha -ne "971c6a5e3adff27e10e2acebeb430029189f9698d66730f3ffc2225796986c93") { throw "English source checksum mismatch: $sha" }
-          New-Item -ItemType Directory -Force -Path build-en | Out-Null
-          Expand-Archive -Path GamesCleaner_EN_source_exact.zip -DestinationPath build-en -Force
-
+          [IO.File]::WriteAllBytes("nl_to_en.patch.gz", [Convert]::FromBase64String($b64))
+          $sha = (Get-FileHash "nl_to_en.patch.gz" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne "9e0162beff9c1b26a732554e4a0ee4ca2e2b72e37d75716cb7af3cf896a80d20") { throw "English translation patch checksum mismatch: $sha" }
+          gzip -d -c nl_to_en.patch.gz | Set-Content -Encoding utf8 nl_to_en.patch
+          Copy-Item build-nl\src build-en -Recurse
+          git apply --unsafe-paths -p1 --directory=build-en nl_to_en.patch
+          if ($LASTEXITCODE -ne 0) { throw "English translation patch failed" }
       - name: Run Dutch self-test
         shell: pwsh
         run: |
@@ -101,5 +102,5 @@ jobs:
           name: GamesCleaner_SOURCE_PUBLICATION_TEST
           path: |
             GamesCleaner_NL_source_exact.zip
-            GamesCleaner_EN_source_exact.zip
+            nl_to_en.patch.gz
           if-no-files-found: error
