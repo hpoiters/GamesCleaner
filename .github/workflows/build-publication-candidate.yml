@@ -1,4 +1,4 @@
-name: Build publication candidate
+name: Build RC1
 
 on:
   workflow_dispatch:
@@ -46,6 +46,27 @@ jobs:
           Copy-Item build-nl\src build-en -Recurse
           git apply --unsafe-paths -p1 --directory=build-en nl_to_en.patch
           if ($LASTEXITCODE -ne 0) { throw "English translation patch failed" }
+
+      - name: Apply RC1 layout-only adjustment
+        shell: pwsh
+        run: |
+          $files = @(
+            "build-nl/src/GamesCleaner/MainForm.cs",
+            "build-en/GamesCleaner/MainForm.cs"
+          )
+          foreach ($file in $files) {
+            $s = Get-Content $file -Raw
+            $before = $s
+            $s = $s -replace 'ColumnCount = 2,\r?\n\s*RowCount = 2', "ColumnCount = 3,`r`n`t`t`tRowCount = 1"
+            $s = $s -replace 'tableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, 100f\)\);\r?\n\s*tableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);\r?\n\s*tableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);', "tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));"
+            $s = $s.Replace("tableLayoutPanel4.Controls.Add(flowLayoutPanel5, 0, 1);", "tableLayoutPanel4.Controls.Add(flowLayoutPanel5, 2, 0);")
+            $s = $s.Replace("`r`n`t`ttableLayoutPanel4.SetColumnSpan(flowLayoutPanel5, 2);", "")
+            $s = $s.Replace("`n`t`ttableLayoutPanel4.SetColumnSpan(flowLayoutPanel5, 2);", "")
+            if ($s -eq $before) { throw "RC1 layout adjustment did not change $file" }
+            if ($s -notmatch 'ColumnCount = 3' -or $s -notmatch 'Controls\.Add\(flowLayoutPanel5, 2, 0\)') { throw "RC1 layout verification failed for $file" }
+            Set-Content -Path $file -Value $s -Encoding utf8 -NoNewline
+          }
+
       - name: Run Dutch self-test
         shell: pwsh
         run: |
@@ -70,7 +91,7 @@ jobs:
           dotnet publish build-en/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-en
           if ($LASTEXITCODE -ne 0) { throw "English dotnet publish failed" }
 
-      - name: Prepare publication-test packages
+      - name: Prepare RC1 packages
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package-nl | Out-Null
@@ -79,28 +100,30 @@ jobs:
           Copy-Item docs\HANDLEIDING_NL.txt "package-nl\HANDLEIDING.txt"
           Copy-Item publish-en\GamesCleaner.exe "package-en\!GamesCleaner.exe"
           Copy-Item docs\USER_GUIDE_EN.txt "package-en\USER_GUIDE.txt"
-          Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_PUBLICATIEPROEF.zip -Force
-          Compress-Archive -Path package-en\* -DestinationPath GamesCleaner_EN_PUBLICATION_TEST.zip -Force
+          Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_RC1.zip -Force
+          Compress-Archive -Path package-en\* -DestinationPath GamesCleaner_EN_RC1.zip -Force
+          Compress-Archive -Path build-nl\src\* -DestinationPath GamesCleaner_NL_RC1_SOURCE.zip -Force
+          Compress-Archive -Path build-en\* -DestinationPath GamesCleaner_EN_RC1_SOURCE.zip -Force
 
-      - name: Upload Dutch publication test
+      - name: Upload Dutch RC1
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_NL_PUBLICATIEPROEF
-          path: GamesCleaner_NL_PUBLICATIEPROEF.zip
+          name: GamesCleaner_NL_RC1
+          path: GamesCleaner_NL_RC1.zip
           if-no-files-found: error
 
-      - name: Upload English publication test
+      - name: Upload English RC1
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_EN_PUBLICATION_TEST
-          path: GamesCleaner_EN_PUBLICATION_TEST.zip
+          name: GamesCleaner_EN_RC1
+          path: GamesCleaner_EN_RC1.zip
           if-no-files-found: error
 
-      - name: Upload matching source archives
+      - name: Upload matching RC1 source
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_SOURCE_PUBLICATION_TEST
+          name: GamesCleaner_SOURCE_RC1
           path: |
-            GamesCleaner_NL_source_exact.zip
-            nl_to_en.patch.gz
+            GamesCleaner_NL_RC1_SOURCE.zip
+            GamesCleaner_EN_RC1_SOURCE.zip
           if-no-files-found: error
