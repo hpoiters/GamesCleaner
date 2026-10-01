@@ -37,7 +37,7 @@ jobs:
       - name: Reconstruct and verify English source
         shell: pwsh
         run: |
-          $parts = @("reference/source-parts/en-00.b64","reference/source-parts/en-01.b64","reference/source-parts/en-02a.b64","reference/source-parts/en-02b.b64","reference/source-parts/en-03.b64") | ForEach-Object { Get-Item $_ }
+          $parts = @("reference/source-parts/en-00.b64","reference/source-parts/en-01.b64","reference/source-parts/en-02a.b64","reference/source-parts/en-02b.b64","reference/source-parts/en-03a.b64","reference/source-parts/en-03b.b64") | ForEach-Object { Get-Item $_ }
           $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
           [IO.File]::WriteAllBytes("GamesCleaner_EN_source_exact.zip", [Convert]::FromBase64String($b64))
           $sha = (Get-FileHash "GamesCleaner_EN_source_exact.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
