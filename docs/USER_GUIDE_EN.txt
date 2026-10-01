@@ -1,0 +1,98 @@
+GamesCleaner v2 — User Guide
+============================
+
+GamesCleaner is a Windows application for cleaning large collections of chess games in PGN format.
+
+Every recognized game is written to exactly one of two files:
+
+    StrongGames.pgn
+    Rejected.pgn
+
+The original PGN source files are read only and are never modified.
+
+Default selection rules
+-----------------------
+By default GamesCleaner uses:
+- both players rated at least Elo 2400;
+- at least 20 full moves;
+- Bullet games rejected;
+- recognizable very fast games with a base time of 120 seconds or less rejected;
+- only completed results 1-0, 0-1 and 1/2-1/2;
+- games with missing Elo information or clearly malformed PGN data rejected.
+
+The Elo threshold, minimum game length and very-fast time threshold can be adjusted in the program.
+
+Selecting PGN sources
+---------------------
+At startup GamesCleaner searches the folder containing !GamesCleaner.exe and all subfolders below it.
+
+PGNs in program folder
+Uses only the program folder and its subfolders.
+
+PGNs elsewhere…
+Starts a new external source selection. The existing source list is cleared first. You then select one other folder. Only that selected folder and its subfolders are searched. Parent folders and neighboring folder trees are never included automatically.
+
+Important when using the Windows folder picker:
+double-clicking a folder only navigates into that folder. The folder becomes the GamesCleaner source only after Select Folder is clicked. Subfolders do not need to be selected separately.
+
+Clear
+Clears the current source list. The last external browse location is remembered, so PGNs elsewhere… opens there again next time.
+
+No automatic preselection
+-------------------------
+GamesCleaner displays discovered PGN files but does not automatically select any newly discovered PGN.
+
+There is no preference based on filename or origin, such as Merged, Final, Metal, RAW or Source2Metal.
+
+You decide which files are processed:
+- individually with the check boxes;
+- with Select all;
+- with Select none.
+
+On a normal refresh, manual check states of files already known to the program are preserved. Newly discovered files start unchecked.
+
+Worker threads
+--------------
+GamesCleaner can process multiple independent PGN source files in parallel. By default it uses approximately half of the available logical CPU threads.
+
+More worker threads do not necessarily produce proportional speed gains. Storage throughput, memory traffic and writing to the shared output may become limiting factors.
+
+One single large PGN is deliberately streamed sequentially. Extra worker threads mainly help when several independent PGN source files are selected.
+
+Output
+------
+By default GamesCleaner uses its own result folder below the program folder. Choose output folder… lets you select another output folder. Default returns to the normal location.
+
+Every run receives its own date-time folder. A completed run contains:
+
+    StrongGames.pgn
+    Rejected.pgn
+    GamesCleaner_Report.txt
+
+StrongGames.pgn and Rejected.pgn together contain the complete set of all recognized processed games.
+
+Progress
+--------
+During processing GamesCleaner displays, among other things:
+- progress based on processed file size;
+- the current PGN file;
+- total games processed;
+- StrongGames and rejected games;
+- elapsed time;
+- estimated remaining time.
+
+The window may be resized or maximized while processing continues.
+
+Cancelling
+----------
+Processing can be cancelled safely. Partial output is marked with _INCOMPLETE so it cannot easily be mistaken for a completed run.
+
+Bullet and time controls
+------------------------
+GamesCleaner uses PGN time-control information where available. The word Bullet in relevant metadata such as Event, Site, Speed or TimeClass may also be used for recognition.
+
+A player name containing the word Bullet does not by itself cause rejection. An unknown time control is not automatically rejected.
+
+Source-file safety
+------------------
+GamesCleaner never modifies the original PGN source files. It reads the sources and writes the results separately to new files.
