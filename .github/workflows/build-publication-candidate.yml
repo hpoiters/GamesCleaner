@@ -44,11 +44,10 @@ jobs:
       - name: Run built-in regression self-test
         shell: pwsh
         run: |
-          & .\publish-nl\GamesCleaner.exe --selftest
+          dotnet run --project build-nl/src/GamesCleaner.csproj -c Release -- --selftest
           if ($LASTEXITCODE -ne 0) {
-            $failure = Join-Path ([IO.Path]::GetTempPath()) "GamesCleanerSelfTest_FAILED.txt"
-            if (Test-Path $failure) { Get-Content $failure }
-            throw "GamesCleaner self-test failed"
+            Get-ChildItem -Path ([IO.Path]::GetTempPath()) -Filter "GamesCleanerSelfTest_FAILED.txt" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
+            throw "GamesCleaner managed self-test failed"
           }
 
       - name: Prepare Dutch publication-test package
