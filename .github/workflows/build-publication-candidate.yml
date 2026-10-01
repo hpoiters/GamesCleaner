@@ -46,7 +46,7 @@ jobs:
         run: |
           & .\publish-nl\GamesCleaner.exe --selftest
           if ($LASTEXITCODE -ne 0) {
-            $failure = Join-Path $env:TEMP "GamesCleanerSelfTest_FAILED.txt"
+            $failure = Join-Path ([IO.Path]::GetTempPath()) "GamesCleanerSelfTest_FAILED.txt"
             if (Test-Path $failure) { Get-Content $failure }
             throw "GamesCleaner self-test failed"
           }
