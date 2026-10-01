@@ -1,0 +1,98 @@
+GamesCleaner v2 — Handleiding
+=============================
+
+GamesCleaner is een Windows-programma voor het opschonen van grote verzamelingen schaakpartijen in PGN-formaat.
+
+Iedere herkende partij wordt precies naar één van twee bestanden geschreven:
+
+    StrongGames.pgn
+    Afgekeurd.pgn
+
+De oorspronkelijke PGN-bronbestanden worden alleen gelezen en nooit gewijzigd.
+
+Standaardselectie
+-----------------
+Standaard gebruikt GamesCleaner:
+- beide spelers minimaal Elo 2400;
+- minimaal 20 volledige zetten;
+- Bullet-partijen afkeuren;
+- herkenbare zeer snelle partijen met maximaal 120 seconden basistijd afkeuren;
+- alleen voltooide uitslagen 1-0, 0-1 en 1/2-1/2;
+- partijen met ontbrekende Elo of duidelijk afwijkende/beschadigde PGN-gegevens afkeuren.
+
+Elo, minimumaantal zetten en de grens voor zeer snelle partijen zijn in het programma instelbaar.
+
+PGN-bronnen kiezen
+------------------
+Bij het starten zoekt GamesCleaner standaard in de map waarin !GamesCleaner.exe staat en in de submappen daaronder.
+
+PGN's eigen map
+Gebruikt uitsluitend de programmamap plus de submappen daaronder.
+
+PGN's elders…
+Begint een nieuwe externe bronkeuze. De bestaande bronlijst wordt eerst leeggemaakt. Daarna kiest u één andere map. Alleen die gekozen map en de submappen daaronder worden doorzocht. Bovenliggende en naastliggende mappen worden nooit automatisch meegenomen.
+
+Belangrijk bij de Windows-mapkiezer:
+dubbelklikken op een map betekent alleen dat u die map binnengaat. Pas met Map selecteren wordt de betreffende map daadwerkelijk als bronmap bevestigd. U hoeft submappen niet afzonderlijk te kiezen.
+
+Wissen
+Maakt de huidige bronlijst leeg. De laatst gebruikte externe browse-locatie blijft onthouden, zodat PGN's elders… daar de volgende keer weer opent.
+
+Geen automatische voorselectie
+------------------------------
+GamesCleaner toont de gevonden PGN-bestanden, maar vinkt geen nieuw gevonden PGN automatisch aan.
+
+Er is geen voorkeursbehandeling op basis van bestandsnaam of herkomst, bijvoorbeeld Merged, Final, Metal, RAW of Source2Metal.
+
+U kiest zelf welke bestanden worden verwerkt:
+- individueel met de vinkjes;
+- met Alles aan;
+- met Alles uit.
+
+Bij gewoon verversen blijven handmatig ingestelde vinkjes van reeds bekende bestanden behouden. Nieuw gevonden bestanden beginnen uitgevinkt.
+
+Werkthreads
+-----------
+GamesCleaner kan verschillende bron-PGN's parallel verwerken. Standaard wordt ongeveer de helft van de beschikbare logische CPU-threads gebruikt.
+
+Meer threads betekent niet automatisch evenredig meer snelheid. Opslag, geheugenverkeer en het schrijven naar de gezamenlijke output kunnen de beperkende factor worden.
+
+Eén enkele grote PGN wordt bewust sequentieel verwerkt. Extra werkthreads helpen vooral wanneer meerdere onafhankelijke PGN-bestanden zijn geselecteerd.
+
+Uitvoer
+-------
+Standaard gebruikt GamesCleaner een eigen resultaatmap onder de programmamap. Met Uitvoermap kiezen… kunt u een andere outputmap kiezen. Met Standaard keert u terug naar de gewone locatie.
+
+Iedere run krijgt een eigen datum-tijdmap. Een complete run bevat:
+
+    StrongGames.pgn
+    Afgekeurd.pgn
+    GamesCleaner_Report.txt
+
+StrongGames.pgn en Afgekeurd.pgn vormen samen de complete verzameling van alle herkende en verwerkte partijen.
+
+Voortgang
+---------
+Tijdens de verwerking toont GamesCleaner onder andere:
+- voortgang op basis van verwerkte bestandsgrootte;
+- huidig PGN-bestand;
+- totaal aantal verwerkte partijen;
+- StrongGames en afgekeurde partijen;
+- verstreken tijd;
+- geschatte resterende tijd.
+
+Het venster kan tijdens de verwerking worden vergroot, verkleind of gemaximaliseerd.
+
+Annuleren
+---------
+GamesCleaner kan veilig worden geannuleerd. Gedeeltelijke output wordt gemarkeerd met _ONVOLLEDIG, zodat die niet met een complete run wordt verward.
+
+Bullet en tijdcontrole
+----------------------
+Waar mogelijk gebruikt GamesCleaner PGN-informatie over tijdcontrole. Het woord Bullet in relevante metadata zoals Event, Site, Speed of TimeClass kan eveneens voor herkenning worden gebruikt.
+
+Een spelersnaam waarin toevallig Bullet voorkomt is op zichzelf geen reden voor afkeuring. Een onbekende tijdcontrole wordt niet automatisch afgekeurd.
+
+Veiligheid
+----------
+GamesCleaner wijzigt de oorspronkelijke PGN-bronbestanden niet. Het programma leest de bronnen en schrijft de resultaten afzonderlijk naar nieuwe bestanden.
