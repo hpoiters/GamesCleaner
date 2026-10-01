@@ -22,11 +22,18 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Extract exact NL source
+      - name: Reconstruct and verify exact NL source
         shell: pwsh
         run: |
+          $parts = Get-ChildItem reference/source-parts/nl-*.b64 | Sort-Object Name
+          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
+          [IO.File]::WriteAllBytes("GamesCleaner_NL_source_exact.zip", [Convert]::FromBase64String($b64))
+          $sha = (Get-FileHash "GamesCleaner_NL_source_exact.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne "41f323936105b916d03c461e555b322d444da44079dcfe25bfe0d17136920165") {
+            throw "Source archive checksum mismatch: $sha"
+          }
           New-Item -ItemType Directory -Force -Path build-nl | Out-Null
-          tar -xf reference/GamesCleaner_NL_source.zip -C build-nl
+          Expand-Archive -Path GamesCleaner_NL_source_exact.zip -DestinationPath build-nl -Force
 
       - name: Publish self-contained Windows x64
         shell: pwsh
