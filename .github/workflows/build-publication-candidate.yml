@@ -42,7 +42,7 @@ jobs:
           [IO.File]::WriteAllBytes("nl_to_en.patch.gz", [Convert]::FromBase64String($b64))
           $sha = (Get-FileHash "nl_to_en.patch.gz" -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($sha -ne "9e0162beff9c1b26a732554e4a0ee4ca2e2b72e37d75716cb7af3cf896a80d20") { throw "English translation patch checksum mismatch: $sha" }
-          gzip -d -c nl_to_en.patch.gz | Set-Content -Encoding utf8 nl_to_en.patch
+          cmd /c "gzip -d -c nl_to_en.patch.gz > nl_to_en.patch"
           Copy-Item build-nl\src build-en -Recurse
           git apply --unsafe-paths -p1 --directory=build-en nl_to_en.patch
           if ($LASTEXITCODE -ne 0) { throw "English translation patch failed" }
