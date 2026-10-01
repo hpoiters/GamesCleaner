@@ -62,7 +62,7 @@ jobs:
             $s = [regex]::Replace($s, '(?s)\t\tGroupBox groupBox2 = new GroupBox\r?\n\t\t\{\r?\n.*?\t\t\};\r?\n(?=\t\tTableLayoutPanel tableLayoutPanel4)', '', 1)
 
             # Put output label, path, Default and folder chooser on one row.
-            $s = [regex]::Replace($s, '(\t\tTableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel\r?\n\t\t\{\r?\n\t\t\tDock = DockStyle\.Fill,\r?\n\t\t\tAutoSize = true,\r?\n)\t\t\tColumnCount = 2,\r?\n\t\t\tRowCount = 2', '$1`t`t`tColumnCount = 4,`r`n`t`t`tRowCount = 1,`r`n`t`t`tMargin = new Padding(0, 1, 0, 0)', 1)
+            $replacement = '$1' + "`t`t`tColumnCount = 4,`r`n`t`t`tRowCount = 1,`r`n`t`t`tMargin = new Padding(0, 1, 0, 0)"\n            $s = [regex]::Replace($s, '(\t\tTableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel\r?\n\t\t\{\r?\n\t\t\tDock = DockStyle\.Fill,\r?\n\t\t\tAutoSize = true,\r?\n)\t\t\tColumnCount = 2,\r?\n\t\t\tRowCount = 2', $replacement, 1)
 
             $s = [regex]::Replace($s, '\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, 100f\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);', "`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));", 1)
 
