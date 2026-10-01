@@ -4,14 +4,15 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "reference/GamesCleaner_NL_source.zip"
+      - "reference/source-parts/**"
+      - "docs/**"
       - ".github/workflows/build-publication-candidate.yml"
 
 permissions:
   contents: read
 
 jobs:
-  build-nl:
+  build:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -22,44 +23,83 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Reconstruct and verify exact NL source
+      - name: Reconstruct and verify Dutch source
         shell: pwsh
         run: |
           $parts = Get-ChildItem reference/source-parts/nl-*.b64 | Sort-Object Name
           $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
           [IO.File]::WriteAllBytes("GamesCleaner_NL_source_exact.zip", [Convert]::FromBase64String($b64))
           $sha = (Get-FileHash "GamesCleaner_NL_source_exact.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($sha -ne "41f323936105b916d03c461e555b322d444da44079dcfe25bfe0d17136920165") {
-            throw "Source archive checksum mismatch: $sha"
-          }
+          if ($sha -ne "41f323936105b916d03c461e555b322d444da44079dcfe25bfe0d17136920165") { throw "Dutch source checksum mismatch: $sha" }
           New-Item -ItemType Directory -Force -Path build-nl | Out-Null
           Expand-Archive -Path GamesCleaner_NL_source_exact.zip -DestinationPath build-nl -Force
 
-      - name: Publish self-contained Windows x64
+      - name: Reconstruct and verify English source
         shell: pwsh
         run: |
-          dotnet publish build-nl/src/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-nl
-          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+          $parts = Get-ChildItem reference/source-parts/en-*.b64 | Sort-Object Name
+          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
+          [IO.File]::WriteAllBytes("GamesCleaner_EN_source_exact.zip", [Convert]::FromBase64String($b64))
+          $sha = (Get-FileHash "GamesCleaner_EN_source_exact.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne "971c6a5e3adff27e10e2acebeb430029189f9698d66730f3ffc2225796986c93") { throw "English source checksum mismatch: $sha" }
+          New-Item -ItemType Directory -Force -Path build-en | Out-Null
+          Expand-Archive -Path GamesCleaner_EN_source_exact.zip -DestinationPath build-en -Force
 
-      - name: Run built-in regression self-test
+      - name: Run Dutch self-test
         shell: pwsh
         run: |
           dotnet run --project build-nl/src/GamesCleaner.csproj -c Release -- --selftest
-          if ($LASTEXITCODE -ne 0) {
-            Get-ChildItem -Path ([IO.Path]::GetTempPath()) -Filter "GamesCleanerSelfTest_FAILED.txt" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
-            throw "GamesCleaner managed self-test failed"
-          }
+          if ($LASTEXITCODE -ne 0) { throw "Dutch GamesCleaner self-test failed" }
 
-      - name: Prepare Dutch publication-test package
+      - name: Run English self-test
+        shell: pwsh
+        run: |
+          dotnet run --project build-en/GamesCleaner.csproj -c Release -- --selftest
+          if ($LASTEXITCODE -ne 0) { throw "English GamesCleaner self-test failed" }
+
+      - name: Publish Dutch Windows x64
+        shell: pwsh
+        run: |
+          dotnet publish build-nl/src/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-nl
+          if ($LASTEXITCODE -ne 0) { throw "Dutch dotnet publish failed" }
+
+      - name: Publish English Windows x64
+        shell: pwsh
+        run: |
+          dotnet publish build-en/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-en
+          if ($LASTEXITCODE -ne 0) { throw "English dotnet publish failed" }
+
+      - name: Prepare publication-test packages
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package-nl | Out-Null
+          New-Item -ItemType Directory -Force -Path package-en | Out-Null
           Copy-Item publish-nl\GamesCleaner.exe "package-nl\!GamesCleaner.exe"
+          Copy-Item docs\HANDLEIDING_NL.txt "package-nl\HANDLEIDING.txt"
+          Copy-Item publish-en\GamesCleaner.exe "package-en\!GamesCleaner.exe"
+          Copy-Item docs\USER_GUIDE_EN.txt "package-en\USER_GUIDE.txt"
           Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_PUBLICATIEPROEF.zip -Force
+          Compress-Archive -Path package-en\* -DestinationPath GamesCleaner_EN_PUBLICATION_TEST.zip -Force
 
-      - name: Upload Dutch test artifact
+      - name: Upload Dutch publication test
         uses: actions/upload-artifact@v4
         with:
           name: GamesCleaner_NL_PUBLICATIEPROEF
           path: GamesCleaner_NL_PUBLICATIEPROEF.zip
+          if-no-files-found: error
+
+      - name: Upload English publication test
+        uses: actions/upload-artifact@v4
+        with:
+          name: GamesCleaner_EN_PUBLICATION_TEST
+          path: GamesCleaner_EN_PUBLICATION_TEST.zip
+          if-no-files-found: error
+
+      - name: Upload matching source archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: GamesCleaner_SOURCE_PUBLICATION_TEST
+          path: |
+            GamesCleaner_NL_source_exact.zip
+            GamesCleaner_EN_source_exact.zip
           if-no-files-found: error
