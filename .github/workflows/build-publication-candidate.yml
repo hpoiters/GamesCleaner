@@ -56,28 +56,124 @@ jobs:
           )
           foreach ($file in $files) {
             $s = Get-Content $file -Raw
-            $before = $s
+            $isEn = $file -like "*build-en*"
+            $outputLabel = if ($isEn) { "Output folder:" } else { "Uitvoermap:" }
+            $chooseText = if ($isEn) { "Choose output folder…" } else { "Uitvoermap kiezen…" }
+            $defaultText = if ($isEn) { "Default" } else { "Standaard" }
+            $progressLabel = if ($isEn) { "Progress:" } else { "Voortgang:" }
+            $readyText = if ($isEn) { "Ready." } else { "Gereed." }
+            $percentText = if ($isEn) { "0.0%" } else { "0,0%" }
+            $countsText = if ($isEn) { "Games: 0   StrongGames: 0   Rejected: 0" } else { "Partijen: 0   StrongGames: 0   Afgekeurd: 0" }
 
-            # Remove only the decorative Output/Uitvoer group box.
-            $s = [regex]::Replace($s, '(?s)\t\tGroupBox groupBox2 = new GroupBox\r?\n\t\t\{\r?\n.*?\t\t\};\r?\n(?=\t\tTableLayoutPanel tableLayoutPanel4)', '', 1)
+            $newOutput = @'
+		Panel groupBox2 = new Panel
+		{
+			Dock = DockStyle.Top,
+			AutoSize = true,
+			Padding = new Padding(3),
+			Margin = new Padding(0, 1, 0, 0)
+		};
+		TableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			AutoSize = true,
+			ColumnCount = 4,
+			RowCount = 1
+		};
+		tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+		tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+		tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+		tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+		tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+		tableLayoutPanel4.Controls.Add(MakeLabel("__OUTPUT_LABEL__"), 0, 0);
+		_outputPathBox.ReadOnly = true;
+		_outputPathBox.Dock = DockStyle.Fill;
+		_outputPathBox.Text = _outputRootDirectory;
+		_outputPathBox.Margin = new Padding(6, 3, 3, 3);
+		tableLayoutPanel4.Controls.Add(_outputPathBox, 1, 0);
+		_defaultOutputButton.Text = "__DEFAULT_TEXT__";
+		_defaultOutputButton.AutoSize = true;
+		_defaultOutputButton.Margin = new Padding(8, 3, 0, 3);
+		_defaultOutputButton.Click += delegate
+		{
+			ResetOutputDirectory();
+		};
+		tableLayoutPanel4.Controls.Add(_defaultOutputButton, 2, 0);
+		_chooseOutputButton.Text = "__CHOOSE_TEXT__";
+		_chooseOutputButton.AutoSize = true;
+		_chooseOutputButton.Margin = new Padding(8, 3, 0, 3);
+		_chooseOutputButton.Click += delegate
+		{
+			ChooseOutputDirectory();
+		};
+		tableLayoutPanel4.Controls.Add(_chooseOutputButton, 3, 0);
+		groupBox2.Controls.Add(tableLayoutPanel4);
+		tableLayoutPanel.Controls.Add(groupBox2, 0, 4);
+'@
+            $newOutput = $newOutput.Replace("__OUTPUT_LABEL__", $outputLabel).Replace("__DEFAULT_TEXT__", $defaultText).Replace("__CHOOSE_TEXT__", $chooseText)
+            $outputPattern = '(?s)\t\tGroupBox groupBox2 = new GroupBox.*?\t\ttableLayoutPanel\.Controls\.Add\(groupBox2, 0, 4\);'
+            $rxOutput = [regex]::new($outputPattern)
+            $s2 = $rxOutput.Replace($s, $newOutput, 1)
+            if ($s2 -eq $s) { throw "RC2 output layout replacement failed for $file" }
+            $s = $s2
 
-            # Put output label, path, Default and folder chooser on one row.
-            $replacement = '$1' + "`t`t`tColumnCount = 4,`r`n`t`t`tRowCount = 1,`r`n`t`t`tMargin = new Padding(0, 1, 0, 0)"
-            $s = [regex]::Replace($s, '(\t\tTableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel\r?\n\t\t\{\r?\n\t\t\tDock = DockStyle\.Fill,\r?\n\t\t\tAutoSize = true,\r?\n)\t\t\tColumnCount = 2,\r?\n\t\t\tRowCount = 2', $replacement, 1)
+            $newProgress = @'
+		Panel groupBox3 = new Panel
+		{
+			Dock = DockStyle.Top,
+			AutoSize = true,
+			Padding = new Padding(3),
+			Margin = new Padding(0, 1, 0, 1)
+		};
+		TableLayoutPanel tableLayoutPanel5 = new TableLayoutPanel
+		{
+			Dock = DockStyle.Fill,
+			AutoSize = true,
+			ColumnCount = 2,
+			RowCount = 4
+		};
+		tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+		tableLayoutPanel5.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+		tableLayoutPanel5.Controls.Add(MakeLabel("__PROGRESS_LABEL__"), 0, 0);
+		_currentFile.AutoEllipsis = true;
+		_currentFile.Dock = DockStyle.Fill;
+		_currentFile.Text = "__READY_TEXT__";
+		tableLayoutPanel5.Controls.Add(_currentFile, 1, 0);
+		_progressBar.Dock = DockStyle.Top;
+		_progressBar.Minimum = 0;
+		_progressBar.Maximum = 1000;
+		_progressBar.Height = 15;
+		_progressBar.Margin = new Padding(0, 1, 0, 1);
+		tableLayoutPanel5.Controls.Add(_progressBar, 0, 1);
+		tableLayoutPanel5.SetColumnSpan(_progressBar, 2);
+		_progressText.AutoSize = true;
+		_progressText.Text = "__PERCENT_TEXT__";
+		tableLayoutPanel5.Controls.Add(_progressText, 0, 2);
+		tableLayoutPanel5.SetColumnSpan(_progressText, 2);
+		_counts.AutoSize = true;
+		_counts.Text = "__COUNTS_TEXT__";
+		tableLayoutPanel5.Controls.Add(_counts, 0, 3);
+		tableLayoutPanel5.SetColumnSpan(_counts, 2);
+		groupBox3.Controls.Add(tableLayoutPanel5);
+		tableLayoutPanel.Controls.Add(groupBox3, 0, 5);
+'@
+            $newProgress = $newProgress.Replace("__PROGRESS_LABEL__", $progressLabel).Replace("__READY_TEXT__", $readyText).Replace("__PERCENT_TEXT__", $percentText).Replace("__COUNTS_TEXT__", $countsText)
+            $progressPattern = '(?s)\t\tGroupBox groupBox3 = new GroupBox.*?\t\ttableLayoutPanel\.Controls\.Add\(groupBox3, 0, 5\);'
+            $rxProgress = [regex]::new($progressPattern)
+            $s2 = $rxProgress.Replace($s, $newProgress, 1)
+            if ($s2 -eq $s) { throw "RC2 progress layout replacement failed for $file" }
+            $s = $s2
 
-            $s = [regex]::Replace($s, '\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, 100f\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);', "`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));", 1)
-
-            $s = [regex]::Replace($s, '\t\tFlowLayoutPanel flowLayoutPanel5 = MakeWrapFlow\(\);\r?\n\t\tflowLayoutPanel5\.FlowDirection = FlowDirection\.RightToLeft;\r?\n\t\tflowLayoutPanel5\.Dock = DockStyle\.Top;\r?\n', '', 1)
-            $s = $s.Replace("`t`tflowLayoutPanel5.Controls.Add(_chooseOutputButton);", "`t`ttableLayoutPanel4.Controls.Add(_chooseOutputButton, 3, 0);")
-            $s = $s.Replace("`t`tflowLayoutPanel5.Controls.Add(_defaultOutputButton);", "`t`ttableLayoutPanel4.Controls.Add(_defaultOutputButton, 2, 0);")
-
-            $s = [regex]::Replace($s, '\t\ttableLayoutPanel4\.Controls\.Add\(flowLayoutPanel5, 0, 1\);\r?\n\t\ttableLayoutPanel4\.SetColumnSpan\(flowLayoutPanel5, 2\);\r?\n\t\tgroupBox2\.Controls\.Add\(tableLayoutPanel4\);\r?\n\t\ttableLayoutPanel\.Controls\.Add\(groupBox2, 0, 4\);', "`t`ttableLayoutPanel.Controls.Add(tableLayoutPanel4, 0, 4);", 1)
-
-            if ($s -eq $before) { throw "RC2 layout adjustment did not change $file" }
-            if ($s -match 'groupBox2' -or $s -match 'flowLayoutPanel5') { throw "RC2 obsolete output wrapper remains in $file" }
-            if ($s -notmatch 'ColumnCount = 4' -or $s -notmatch 'Controls\.Add\(_defaultOutputButton, 2, 0\)' -or $s -notmatch 'Controls\.Add\(_chooseOutputButton, 3, 0\)') { throw "RC2 layout verification failed for $file" }
+            if ($s -notmatch 'Panel groupBox2 = new Panel' -or
+                $s -notmatch 'Controls\.Add\(_defaultOutputButton, 2, 0\)' -or
+                $s -notmatch 'Controls\.Add\(_chooseOutputButton, 3, 0\)' -or
+                $s -notmatch 'Panel groupBox3 = new Panel' -or
+                $s -notmatch 'Controls\.Add\(_currentFile, 1, 0\)') {
+              throw "RC2 layout verification failed for $file"
+            }
             Set-Content -Path $file -Value $s -Encoding utf8 -NoNewline
           }
+
       - name: Run Dutch self-test
         shell: pwsh
         run: |
