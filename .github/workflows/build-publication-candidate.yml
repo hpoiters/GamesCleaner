@@ -1,4 +1,4 @@
-name: Build RC1
+name: Build RC2
 
 on:
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
           git apply --unsafe-paths -p1 --directory=build-en nl_to_en.patch
           if ($LASTEXITCODE -ne 0) { throw "English translation patch failed" }
 
-      - name: Apply RC1 layout-only adjustment
+      - name: Apply RC2 layout-only adjustment
         shell: pwsh
         run: |
           $files = @(
@@ -57,16 +57,26 @@ jobs:
           foreach ($file in $files) {
             $s = Get-Content $file -Raw
             $before = $s
-            $s = $s -replace 'ColumnCount = 2,\r?\n\s*RowCount = 2', "ColumnCount = 3,`r`n`t`t`tRowCount = 1"
-            $s = $s -replace 'tableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, 100f\)\);\r?\n\s*tableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);\r?\n\s*tableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);', "tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));"
-            $s = $s.Replace("tableLayoutPanel4.Controls.Add(flowLayoutPanel5, 0, 1);", "tableLayoutPanel4.Controls.Add(flowLayoutPanel5, 2, 0);")
-            $s = $s.Replace("`r`n`t`ttableLayoutPanel4.SetColumnSpan(flowLayoutPanel5, 2);", "")
-            $s = $s.Replace("`n`t`ttableLayoutPanel4.SetColumnSpan(flowLayoutPanel5, 2);", "")
-            if ($s -eq $before) { throw "RC1 layout adjustment did not change $file" }
-            if ($s -notmatch 'ColumnCount = 3' -or $s -notmatch 'Controls\.Add\(flowLayoutPanel5, 2, 0\)') { throw "RC1 layout verification failed for $file" }
+
+            # Remove only the decorative Output/Uitvoer group box.
+            $s = [regex]::Replace($s, '(?s)\t\tGroupBox groupBox2 = new GroupBox\r?\n\t\t\{\r?\n.*?\t\t\};\r?\n(?=\t\tTableLayoutPanel tableLayoutPanel4)', '', 1)
+
+            # Put output label, path, Default and folder chooser on one row.
+            $s = [regex]::Replace($s, '(\t\tTableLayoutPanel tableLayoutPanel4 = new TableLayoutPanel\r?\n\t\t\{\r?\n\t\t\tDock = DockStyle\.Fill,\r?\n\t\t\tAutoSize = true,\r?\n)\t\t\tColumnCount = 2,\r?\n\t\t\tRowCount = 2', '$1`t`t`tColumnCount = 4,`r`n`t`t`tRowCount = 1,`r`n`t`t`tMargin = new Padding(0, 1, 0, 0)', 1)
+
+            $s = [regex]::Replace($s, '\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, 100f\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);\r?\n\t\ttableLayoutPanel4\.RowStyles\.Add\(new RowStyle\(SizeType\.AutoSize\)\);', "`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));`r`n`t`ttableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.AutoSize));", 1)
+
+            $s = [regex]::Replace($s, '\t\tFlowLayoutPanel flowLayoutPanel5 = MakeWrapFlow\(\);\r?\n\t\tflowLayoutPanel5\.FlowDirection = FlowDirection\.RightToLeft;\r?\n\t\tflowLayoutPanel5\.Dock = DockStyle\.Top;\r?\n', '', 1)
+            $s = $s.Replace("`t`tflowLayoutPanel5.Controls.Add(_chooseOutputButton);", "`t`ttableLayoutPanel4.Controls.Add(_chooseOutputButton, 3, 0);")
+            $s = $s.Replace("`t`tflowLayoutPanel5.Controls.Add(_defaultOutputButton);", "`t`ttableLayoutPanel4.Controls.Add(_defaultOutputButton, 2, 0);")
+
+            $s = [regex]::Replace($s, '\t\ttableLayoutPanel4\.Controls\.Add\(flowLayoutPanel5, 0, 1\);\r?\n\t\ttableLayoutPanel4\.SetColumnSpan\(flowLayoutPanel5, 2\);\r?\n\t\tgroupBox2\.Controls\.Add\(tableLayoutPanel4\);\r?\n\t\ttableLayoutPanel\.Controls\.Add\(groupBox2, 0, 4\);', "`t`ttableLayoutPanel.Controls.Add(tableLayoutPanel4, 0, 4);", 1)
+
+            if ($s -eq $before) { throw "RC2 layout adjustment did not change $file" }
+            if ($s -match 'groupBox2' -or $s -match 'flowLayoutPanel5') { throw "RC2 obsolete output wrapper remains in $file" }
+            if ($s -notmatch 'ColumnCount = 4' -or $s -notmatch 'Controls\.Add\(_defaultOutputButton, 2, 0\)' -or $s -notmatch 'Controls\.Add\(_chooseOutputButton, 3, 0\)') { throw "RC2 layout verification failed for $file" }
             Set-Content -Path $file -Value $s -Encoding utf8 -NoNewline
           }
-
       - name: Run Dutch self-test
         shell: pwsh
         run: |
@@ -91,7 +101,7 @@ jobs:
           dotnet publish build-en/GamesCleaner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish-en
           if ($LASTEXITCODE -ne 0) { throw "English dotnet publish failed" }
 
-      - name: Prepare RC1 packages
+      - name: Prepare RC2 packages
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package-nl | Out-Null
@@ -100,30 +110,30 @@ jobs:
           Copy-Item docs\HANDLEIDING_NL.txt "package-nl\HANDLEIDING.txt"
           Copy-Item publish-en\GamesCleaner.exe "package-en\!GamesCleaner.exe"
           Copy-Item docs\USER_GUIDE_EN.txt "package-en\USER_GUIDE.txt"
-          Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_RC1.zip -Force
-          Compress-Archive -Path package-en\* -DestinationPath GamesCleaner_EN_RC1.zip -Force
-          Compress-Archive -Path build-nl\src\* -DestinationPath GamesCleaner_NL_RC1_SOURCE.zip -Force
-          Compress-Archive -Path build-en\* -DestinationPath GamesCleaner_EN_RC1_SOURCE.zip -Force
+          Compress-Archive -Path package-nl\* -DestinationPath GamesCleaner_NL_RC2.zip -Force
+          Compress-Archive -Path package-en\* -DestinationPath GamesCleaner_EN_RC2.zip -Force
+          Compress-Archive -Path build-nl\src\* -DestinationPath GamesCleaner_NL_RC2_SOURCE.zip -Force
+          Compress-Archive -Path build-en\* -DestinationPath GamesCleaner_EN_RC2_SOURCE.zip -Force
 
-      - name: Upload Dutch RC1
+      - name: Upload Dutch RC2
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_NL_RC1
-          path: GamesCleaner_NL_RC1.zip
+          name: GamesCleaner_NL_RC2
+          path: GamesCleaner_NL_RC2.zip
           if-no-files-found: error
 
-      - name: Upload English RC1
+      - name: Upload English RC2
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_EN_RC1
-          path: GamesCleaner_EN_RC1.zip
+          name: GamesCleaner_EN_RC2
+          path: GamesCleaner_EN_RC2.zip
           if-no-files-found: error
 
-      - name: Upload matching RC1 source
+      - name: Upload matching RC2 source
         uses: actions/upload-artifact@v4
         with:
-          name: GamesCleaner_SOURCE_RC1
+          name: GamesCleaner_SOURCE_RC2
           path: |
-            GamesCleaner_NL_RC1_SOURCE.zip
-            GamesCleaner_EN_RC1_SOURCE.zip
+            GamesCleaner_NL_RC2_SOURCE.zip
+            GamesCleaner_EN_RC2_SOURCE.zip
           if-no-files-found: error
