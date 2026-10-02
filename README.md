@@ -23,7 +23,7 @@ See [VALIDATION.md](VALIDATION.md) for the release validation record.
 
 GamesCleaner searches selected folders for PGN files and lets the user choose which files to process. New files are never preselected automatically.
 
-A completed run produces two PGN output files plus a report. The Dutch and English interfaces use localized names where appropriate; together the two PGN outputs contain the complete set of recognized processed games.
+A completed run produces two PGN output files plus a report. Together the two PGN outputs contain the complete set of recognized processed games.
 
 Default filtering includes a minimum Elo for both players, a minimum game length, rejection of Bullet games, rejection of recognizable very-fast games, and validation of completed results.
 
